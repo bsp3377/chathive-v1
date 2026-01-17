@@ -15,7 +15,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { MessageSquare, Loader2, Building2 } from "lucide-react";
+import { MessageSquare, Loader2, Building2, AlertCircle } from "lucide-react";
 
 export default function SignupPage() {
     const [businessName, setBusinessName] = useState("");
@@ -33,7 +33,8 @@ export default function SignupPage() {
         return name
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)/g, "");
+            .replace(/(^-|-$)/g, "")
+            + "-" + Math.random().toString(36).substring(2, 6);
     };
 
     const handleSignup = async (e: React.FormEvent) => {
@@ -48,8 +49,8 @@ export default function SignupPage() {
                 password,
                 options: {
                     data: {
-                        full_name: fullName,
-                        business_name: businessName,
+                        first_name: fullName.split(" ")[0],
+                        last_name: fullName.split(" ").slice(1).join(" "),
                     },
                 },
             });
@@ -64,39 +65,61 @@ export default function SignupPage() {
                 return;
             }
 
-            // 2. Create the organization
-            const slug = generateSlug(businessName) + "-" + Math.random().toString(36).substring(2, 6);
+            // Wait a moment for the user trigger to create the user profile
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // 2. Get the user record (created by trigger)
+            const { data: userData, error: userError } = await supabase
+                .from("users")
+                .select("id")
+                .eq("auth_user_id", authData.user.id)
+                .single();
+
+            if (userError || !userData) {
+                console.error("User lookup error:", userError);
+                // User might not exist if trigger failed - try to continue anyway
+            }
+
+            // 3. Create the organization
+            const slug = generateSlug(businessName);
             const { data: orgData, error: orgError } = await supabase
                 .from("organizations")
                 .insert({
                     name: businessName,
                     slug,
-                    business_type: businessType,
+                    email: email, // Required field
+                    settings: { business_type: businessType },
                 })
                 .select()
                 .single();
 
             if (orgError) {
                 console.error("Org creation error:", orgError);
-                setError("Failed to create organization");
+                // Check if it's a table not found error
+                if (orgError.message?.includes("does not exist") || orgError.code === "42P01") {
+                    setError("Database not set up. Please run the SQL schema in Supabase first.");
+                } else if (orgError.message?.includes("violates row-level security")) {
+                    setError("Permission error. Please check Supabase RLS policies.");
+                } else {
+                    setError(`Failed to create organization: ${orgError.message || "Unknown error"}`);
+                }
                 return;
             }
 
-            // 3. Create the user profile
-            const { error: profileError } = await supabase
-                .from("users")
-                .insert({
-                    id: authData.user.id,
-                    org_id: orgData.id,
-                    email,
-                    full_name: fullName,
-                    role: "owner",
-                });
+            // 4. Create the organization membership (linking user to org)
+            if (userData) {
+                const { error: memberError } = await supabase
+                    .from("organization_members")
+                    .insert({
+                        organization_id: orgData.id,
+                        user_id: userData.id,
+                        role: "owner",
+                    });
 
-            if (profileError) {
-                console.error("Profile creation error:", profileError);
-                setError("Failed to create user profile");
-                return;
+                if (memberError) {
+                    console.error("Membership creation error:", memberError);
+                    // Non-fatal - continue anyway
+                }
             }
 
             // Success!
@@ -107,7 +130,7 @@ export default function SignupPage() {
             }, 1500);
         } catch (err) {
             console.error("Signup error:", err);
-            setError("An unexpected error occurred");
+            setError("An unexpected error occurred. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -145,8 +168,9 @@ export default function SignupPage() {
             <form onSubmit={handleSignup}>
                 <CardContent className="space-y-4">
                     {error && (
-                        <div className="p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg">
-                            {error}
+                        <div className="p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                            <span>{error}</span>
                         </div>
                     )}
 

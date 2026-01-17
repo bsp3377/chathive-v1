@@ -1,421 +1,303 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow, format } from "date-fns";
 import {
     MessageSquare,
     Users,
     Calendar,
     TrendingUp,
     Clock,
-    AlertCircle,
-    Sparkles,
     ArrowUpRight,
-    ArrowDownRight,
+    Sparkles,
+    Inbox,
+    ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
-const stats = [
-    {
-        title: "Unread Messages",
-        value: "24",
-        change: "+12%",
-        changeType: "positive",
-        icon: MessageSquare,
-        color: "from-blue-500 to-blue-600",
-    },
-    {
-        title: "Total Customers",
-        value: "1,284",
-        change: "+8%",
-        changeType: "positive",
-        icon: Users,
-        color: "from-emerald-500 to-teal-600",
-    },
-    {
-        title: "Today's Bookings",
-        value: "18",
-        change: "-2",
-        changeType: "neutral",
-        icon: Calendar,
-        color: "from-violet-500 to-purple-600",
-    },
-    {
-        title: "AI Replies Today",
-        value: "47/100",
-        change: "53 left",
-        changeType: "info",
-        icon: Sparkles,
-        color: "from-amber-500 to-orange-600",
-    },
-];
+interface DashboardData {
+    stats: {
+        unread_messages: number;
+        total_customers: number;
+        today_bookings: number;
+        open_conversations: number;
+    };
+    recent_conversations: Array<{
+        id: string;
+        last_message_at: string;
+        last_message_preview: string;
+        unread_count: number;
+        customer: { id: string; name: string; phone: string; avatar_url?: string };
+    }>;
+    upcoming_bookings: Array<{
+        id: string;
+        starts_at: string;
+        ends_at: string;
+        title: string;
+        status: string;
+        customer: { id: string; name: string; phone: string };
+        service: { id: string; name: string; duration_minutes: number };
+    }>;
+}
 
-const recentConversations = [
-    {
-        id: 1,
-        customer: "Priya Sharma",
-        avatar: null,
-        lastMessage: "Thanks for the appointment confirmation!",
-        time: "2 min ago",
-        unread: true,
-        aiReplied: false,
-    },
-    {
-        id: 2,
-        customer: "Rahul Verma",
-        avatar: null,
-        lastMessage: "What are your opening hours on Sunday?",
-        time: "15 min ago",
-        unread: true,
-        aiReplied: true,
-    },
-    {
-        id: 3,
-        customer: "Anita Desai",
-        avatar: null,
-        lastMessage: "Can I reschedule my appointment?",
-        time: "1 hour ago",
-        unread: false,
-        aiReplied: false,
-    },
-    {
-        id: 4,
-        customer: "Vikram Singh",
-        avatar: null,
-        lastMessage: "Do you offer home service?",
-        time: "2 hours ago",
-        unread: false,
-        aiReplied: true,
-    },
-];
-
-const upcomingBookings = [
-    {
-        id: 1,
-        customer: "Meera Patel",
-        service: "Hair Cut + Color",
-        time: "10:00 AM",
-        duration: "2 hours",
-        status: "confirmed",
-    },
-    {
-        id: 2,
-        customer: "Suresh Kumar",
-        service: "Beard Trim",
-        time: "11:30 AM",
-        duration: "30 min",
-        status: "confirmed",
-    },
-    {
-        id: 3,
-        customer: "Kavita Reddy",
-        service: "Full Body Massage",
-        time: "2:00 PM",
-        duration: "1.5 hours",
-        status: "pending",
-    },
-    {
-        id: 4,
-        customer: "Arjun Nair",
-        service: "Facial Treatment",
-        time: "4:30 PM",
-        duration: "1 hour",
-        status: "confirmed",
-    },
-];
-
-const pendingTasks = [
-    {
-        id: 1,
-        title: "Follow up with Priya about her feedback",
-        type: "enquiry",
-        priority: "high",
-        dueTime: "Today",
-    },
-    {
-        id: 2,
-        title: "Send invoice to Rahul Verma",
-        type: "invoice",
-        priority: "medium",
-        dueTime: "Today",
-    },
-    {
-        id: 3,
-        title: "Confirm booking with Kavita Reddy",
-        type: "booking",
-        priority: "high",
-        dueTime: "30 min",
-    },
-];
+function useDashboard() {
+    return useQuery<DashboardData>({
+        queryKey: ["dashboard"],
+        queryFn: async () => {
+            const res = await fetch("/api/dashboard");
+            if (!res.ok) throw new Error("Failed to fetch dashboard");
+            return res.json();
+        },
+        refetchInterval: 30000, // Refresh every 30 seconds
+    });
+}
 
 export default function DashboardPage() {
+    const { data, isLoading, error } = useDashboard();
+
+    const stats = [
+        {
+            title: "Unread Messages",
+            value: data?.stats.unread_messages ?? 0,
+            icon: MessageSquare,
+            color: "from-blue-500 to-blue-600",
+            href: "/inbox",
+        },
+        {
+            title: "Total Customers",
+            value: data?.stats.total_customers ?? 0,
+            icon: Users,
+            color: "from-emerald-500 to-teal-600",
+            href: "/customers",
+        },
+        {
+            title: "Today's Bookings",
+            value: data?.stats.today_bookings ?? 0,
+            icon: Calendar,
+            color: "from-violet-500 to-purple-600",
+            href: "/bookings",
+        },
+        {
+            title: "Open Conversations",
+            value: data?.stats.open_conversations ?? 0,
+            icon: Inbox,
+            color: "from-amber-500 to-orange-600",
+            href: "/inbox",
+        },
+    ];
+
+    const getInitials = (name?: string) => {
+        if (!name) return "?";
+        return name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+            .slice(0, 2);
+    };
+
     return (
         <div className="p-6 space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">
-                        Good morning, John! 👋
-                    </h1>
+                    <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
                     <p className="text-muted-foreground">
-                        Here&apos;s what&apos;s happening at Glow Salon & Spa today.
+                        Welcome back! Here&apos;s what&apos;s happening today.
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="gap-1.5 py-1.5 px-3">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                        WhatsApp Connected
-                    </Badge>
-                </div>
+                <Badge
+                    variant="outline"
+                    className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                >
+                    <span className="relative flex h-2 w-2 mr-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    Live
+                </Badge>
             </div>
 
-            {/* Stats Grid */}
+            {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {stats.map((stat) => (
-                    <Card key={stat.title} className="overflow-hidden">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between">
-                                <div className="space-y-1">
-                                    <p className="text-sm text-muted-foreground">{stat.title}</p>
-                                    <p className="text-2xl font-bold">{stat.value}</p>
-                                </div>
-                                <div
-                                    className={cn(
-                                        "flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br text-white",
-                                        stat.color
-                                    )}
-                                >
-                                    <stat.icon className="h-6 w-6" />
-                                </div>
-                            </div>
-                            <div className="mt-3 flex items-center gap-1 text-sm">
-                                {stat.changeType === "positive" && (
-                                    <>
-                                        <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-                                        <span className="text-emerald-500">{stat.change}</span>
-                                        <span className="text-muted-foreground">vs last week</span>
-                                    </>
-                                )}
-                                {stat.changeType === "negative" && (
-                                    <>
-                                        <ArrowDownRight className="h-4 w-4 text-red-500" />
-                                        <span className="text-red-500">{stat.change}</span>
-                                        <span className="text-muted-foreground">vs last week</span>
-                                    </>
-                                )}
-                                {stat.changeType === "neutral" && (
-                                    <span className="text-muted-foreground">{stat.change} from yesterday</span>
-                                )}
-                                {stat.changeType === "info" && (
-                                    <span className="text-muted-foreground">{stat.change}</span>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            {/* Main Content Grid */}
-            <div className="grid gap-6 lg:grid-cols-3">
-                {/* Recent Conversations */}
-                <Card className="lg:col-span-1">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-base font-semibold">
-                            Recent Conversations
-                        </CardTitle>
-                        <Button variant="ghost" size="sm" className="text-xs">
-                            View All
-                        </Button>
-                    </CardHeader>
-                    <CardContent className="space-y-1">
-                        {recentConversations.map((conv) => (
-                            <div
-                                key={conv.id}
-                                className={cn(
-                                    "flex items-start gap-3 p-3 rounded-lg transition-colors cursor-pointer hover:bg-muted/50",
-                                    conv.unread && "bg-emerald-50 dark:bg-emerald-950/20"
-                                )}
-                            >
-                                <Avatar className="h-9 w-9 flex-shrink-0">
-                                    <AvatarImage src={conv.avatar || undefined} />
-                                    <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xs">
-                                        {conv.customer
-                                            .split(" ")
-                                            .map((n) => n[0])
-                                            .join("")}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <span
+                {stats.map((stat, i) => {
+                    const Icon = stat.icon;
+                    return (
+                        <Link key={i} href={stat.href}>
+                            <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer overflow-hidden group">
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-medium text-muted-foreground">
+                                                {stat.title}
+                                            </p>
+                                            {isLoading ? (
+                                                <Skeleton className="h-8 w-16" />
+                                            ) : (
+                                                <p className="text-3xl font-bold tracking-tight">
+                                                    {stat.value.toLocaleString()}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div
                                             className={cn(
-                                                "text-sm font-medium truncate",
-                                                conv.unread && "font-semibold"
+                                                "h-12 w-12 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-lg transition-transform group-hover:scale-110",
+                                                stat.color
                                             )}
                                         >
-                                            {conv.customer}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground flex-shrink-0">
-                                            {conv.time}
-                                        </span>
+                                            <Icon className="h-6 w-6 text-white" />
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                        {conv.aiReplied && (
-                                            <Badge
-                                                variant="secondary"
-                                                className="h-4 px-1 text-[10px] bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300"
-                                            >
-                                                <Sparkles className="h-2.5 w-2.5 mr-0.5" />
-                                                AI
+                                </CardContent>
+                            </Card>
+                        </Link>
+                    );
+                })}
+            </div>
+
+            {/* Content Grid */}
+            <div className="grid gap-6 lg:grid-cols-2">
+                {/* Recent Conversations */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-lg font-semibold">
+                            Recent Conversations
+                        </CardTitle>
+                        <Link href="/inbox">
+                            <Button variant="ghost" size="sm" className="gap-1">
+                                View all
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </Link>
+                    </CardHeader>
+                    <CardContent className="space-y-1">
+                        {isLoading ? (
+                            Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="flex items-center gap-3 p-3">
+                                    <Skeleton className="h-10 w-10 rounded-full" />
+                                    <div className="flex-1 space-y-2">
+                                        <Skeleton className="h-4 w-24" />
+                                        <Skeleton className="h-3 w-full" />
+                                    </div>
+                                </div>
+                            ))
+                        ) : data?.recent_conversations.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                                <Inbox className="h-10 w-10 mb-2 opacity-50" />
+                                <p className="text-sm">No conversations yet</p>
+                            </div>
+                        ) : (
+                            data?.recent_conversations.map((conv) => (
+                                <Link key={conv.id} href="/inbox">
+                                    <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                        <Avatar className="h-10 w-10">
+                                            <AvatarImage src={conv.customer?.avatar_url} />
+                                            <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-sm">
+                                                {getInitials(conv.customer?.name)}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between">
+                                                <span
+                                                    className={cn(
+                                                        "text-sm truncate",
+                                                        conv.unread_count > 0 && "font-semibold"
+                                                    )}
+                                                >
+                                                    {conv.customer?.name || conv.customer?.phone || "Unknown"}
+                                                </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {formatDistanceToNow(new Date(conv.last_message_at), {
+                                                        addSuffix: false,
+                                                    })}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground truncate">
+                                                {conv.last_message_preview || "No messages"}
+                                            </p>
+                                        </div>
+                                        {conv.unread_count > 0 && (
+                                            <Badge className="bg-emerald-500 text-white text-[10px] h-5 min-w-5">
+                                                {conv.unread_count}
                                             </Badge>
                                         )}
-                                        <p className="text-xs text-muted-foreground truncate">
-                                            {conv.lastMessage}
-                                        </p>
                                     </div>
-                                </div>
-                                {conv.unread && (
-                                    <div className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0 mt-2" />
-                                )}
-                            </div>
-                        ))}
+                                </Link>
+                            ))
+                        )}
                     </CardContent>
                 </Card>
 
-                {/* Today's Bookings */}
-                <Card className="lg:col-span-1">
+                {/* Upcoming Bookings */}
+                <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-base font-semibold">
-                            Today&apos;s Bookings
+                        <CardTitle className="text-lg font-semibold">
+                            Upcoming Bookings
                         </CardTitle>
-                        <Button variant="ghost" size="sm" className="text-xs">
-                            View Calendar
-                        </Button>
+                        <Link href="/bookings">
+                            <Button variant="ghost" size="sm" className="gap-1">
+                                View all
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                        </Link>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                        {upcomingBookings.map((booking) => (
-                            <div
-                                key={booking.id}
-                                className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
-                            >
-                                <div className="flex flex-col items-center justify-center h-12 w-12 rounded-lg bg-muted text-center">
-                                    <span className="text-sm font-bold text-foreground">
-                                        {booking.time.split(" ")[0]}
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground">
-                                        {booking.time.split(" ")[1]}
-                                    </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">
-                                        {booking.customer}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground truncate">
-                                        {booking.service} • {booking.duration}
-                                    </p>
-                                </div>
-                                <Badge
-                                    variant={
-                                        booking.status === "confirmed" ? "default" : "secondary"
-                                    }
-                                    className={cn(
-                                        "text-[10px] capitalize",
-                                        booking.status === "confirmed" &&
-                                        "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900 dark:text-emerald-300",
-                                        booking.status === "pending" &&
-                                        "bg-amber-100 text-amber-700 hover:bg-amber-100 dark:bg-amber-900 dark:text-amber-300"
-                                    )}
-                                >
-                                    {booking.status}
-                                </Badge>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-
-                {/* Pending Tasks */}
-                <Card className="lg:col-span-1">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-base font-semibold">
-                            Pending Tasks
-                        </CardTitle>
-                        <Badge variant="outline" className="text-xs">
-                            {pendingTasks.length} tasks
-                        </Badge>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {pendingTasks.map((task) => (
-                            <div
-                                key={task.id}
-                                className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
-                            >
-                                <div
-                                    className={cn(
-                                        "h-2 w-2 rounded-full mt-1.5 flex-shrink-0",
-                                        task.priority === "high" && "bg-red-500",
-                                        task.priority === "medium" && "bg-amber-500",
-                                        task.priority === "low" && "bg-blue-500"
-                                    )}
-                                />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium">{task.title}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <Badge variant="outline" className="text-[10px] capitalize">
-                                            {task.type}
-                                        </Badge>
-                                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <Clock className="h-3 w-3" />
-                                            {task.dueTime}
-                                        </span>
+                    <CardContent className="space-y-1">
+                        {isLoading ? (
+                            Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="flex items-center gap-3 p-3">
+                                    <Skeleton className="h-12 w-12 rounded-lg" />
+                                    <div className="flex-1 space-y-2">
+                                        <Skeleton className="h-4 w-32" />
+                                        <Skeleton className="h-3 w-24" />
                                     </div>
                                 </div>
+                            ))
+                        ) : data?.upcoming_bookings.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                                <Calendar className="h-10 w-10 mb-2 opacity-50" />
+                                <p className="text-sm">No upcoming bookings</p>
                             </div>
-                        ))}
-                        <Button variant="outline" size="sm" className="w-full mt-2">
-                            View All Tasks
-                        </Button>
+                        ) : (
+                            data?.upcoming_bookings.map((booking) => (
+                                <Link key={booking.id} href="/bookings">
+                                    <div className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                                        <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex flex-col items-center justify-center text-white">
+                                            <span className="text-xs font-medium">
+                                                {format(new Date(booking.starts_at), "MMM")}
+                                            </span>
+                                            <span className="text-lg font-bold leading-none">
+                                                {format(new Date(booking.starts_at), "d")}
+                                            </span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium truncate">
+                                                {booking.customer?.name || "Unknown"}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {booking.service?.name || booking.title || "Appointment"}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-medium">
+                                                {format(new Date(booking.starts_at), "h:mm a")}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {booking.service?.duration_minutes || 60} min
+                                            </p>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))
+                        )}
                     </CardContent>
                 </Card>
             </div>
-
-            {/* AI Performance Card */}
-            <Card className="bg-gradient-to-br from-violet-500/5 via-purple-500/5 to-fuchsia-500/5 border-violet-200 dark:border-violet-800">
-                <CardContent className="p-6">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-                                <Sparkles className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-lg">AI Auto-Reply Performance</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Your AI has handled 47 conversations today with 94% accuracy
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap gap-6">
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">47</p>
-                                <p className="text-xs text-muted-foreground">AI Replies</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">94%</p>
-                                <p className="text-xs text-muted-foreground">Accuracy</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">2.3s</p>
-                                <p className="text-xs text-muted-foreground">Avg Response</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">53</p>
-                                <p className="text-xs text-muted-foreground">Remaining</p>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
         </div>
     );
 }
