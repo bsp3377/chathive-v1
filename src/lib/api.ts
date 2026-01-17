@@ -1,9 +1,23 @@
 // API client for making requests to the backend
 
+import type {
+    Customer,
+    Conversation,
+    Message,
+    Booking,
+    Invoice,
+    Job,
+    JobStage,
+    Organization,
+    User,
+    PaginatedResponse,
+} from "@/types/database";
+
 const API_BASE = "/api";
 
 interface FetchOptions extends RequestInit {
-    params?: Record<string, string | number | boolean | undefined>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    params?: Record<string, any>;
 }
 
 async function fetchAPI<T>(
@@ -62,26 +76,26 @@ export interface CustomerListParams {
 }
 
 export const customersApi = {
-    list: (params?: CustomerListParams) =>
-        fetchAPI("/customers", { params }),
+    list: (params?: CustomerListParams): Promise<PaginatedResponse<Customer>> =>
+        fetchAPI<PaginatedResponse<Customer>>("/customers", { params }),
 
-    get: (id: string) =>
-        fetchAPI(`/customers/${id}`),
+    get: (id: string): Promise<Customer> =>
+        fetchAPI<Customer>(`/customers/${id}`),
 
-    create: (data: Record<string, unknown>) =>
-        fetchAPI("/customers", {
+    create: (data: Record<string, unknown>): Promise<Customer> =>
+        fetchAPI<Customer>("/customers", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
-    update: (id: string, data: Record<string, unknown>) =>
-        fetchAPI(`/customers/${id}`, {
+    update: (id: string, data: Record<string, unknown>): Promise<Customer> =>
+        fetchAPI<Customer>(`/customers/${id}`, {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
 
-    delete: (id: string) =>
-        fetchAPI(`/customers/${id}`, { method: "DELETE" }),
+    delete: (id: string): Promise<void> =>
+        fetchAPI<void>(`/customers/${id}`, { method: "DELETE" }),
 };
 
 // =============================================================
@@ -97,24 +111,29 @@ export interface ConversationListParams {
     customer_id?: string;
 }
 
+interface MessagesResponse {
+    data: Message[];
+    has_more: boolean;
+}
+
 export const conversationsApi = {
-    list: (params?: ConversationListParams) =>
-        fetchAPI("/conversations", { params }),
+    list: (params?: ConversationListParams): Promise<PaginatedResponse<Conversation>> =>
+        fetchAPI<PaginatedResponse<Conversation>>("/conversations", { params }),
 
-    get: (id: string) =>
-        fetchAPI(`/conversations/${id}`),
+    get: (id: string): Promise<Conversation> =>
+        fetchAPI<Conversation>(`/conversations/${id}`),
 
-    update: (id: string, data: Record<string, unknown>) =>
-        fetchAPI(`/conversations/${id}`, {
+    update: (id: string, data: Record<string, unknown>): Promise<Conversation> =>
+        fetchAPI<Conversation>(`/conversations/${id}`, {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
 
-    getMessages: (id: string, params?: { limit?: number; before?: string }) =>
-        fetchAPI(`/conversations/${id}/messages`, { params }),
+    getMessages: (id: string, params?: { limit?: number; before?: string }): Promise<MessagesResponse> =>
+        fetchAPI<MessagesResponse>(`/conversations/${id}/messages`, { params }),
 
-    sendMessage: (id: string, data: { type?: string; content: string; reply_to_message_id?: string }) =>
-        fetchAPI(`/conversations/${id}/messages`, {
+    sendMessage: (id: string, data: { type?: string; content: string; reply_to_message_id?: string }): Promise<Message> =>
+        fetchAPI<Message>(`/conversations/${id}/messages`, {
             method: "POST",
             body: JSON.stringify(data),
         }),
@@ -135,20 +154,20 @@ export interface BookingListParams {
 }
 
 export const bookingsApi = {
-    list: (params?: BookingListParams) =>
-        fetchAPI("/bookings", { params }),
+    list: (params?: BookingListParams): Promise<PaginatedResponse<Booking>> =>
+        fetchAPI<PaginatedResponse<Booking>>("/bookings", { params }),
 
-    get: (id: string) =>
-        fetchAPI(`/bookings/${id}`),
+    get: (id: string): Promise<Booking> =>
+        fetchAPI<Booking>(`/bookings/${id}`),
 
-    create: (data: Record<string, unknown>) =>
-        fetchAPI("/bookings", {
+    create: (data: Record<string, unknown>): Promise<Booking> =>
+        fetchAPI<Booking>("/bookings", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
-    update: (id: string, data: Record<string, unknown>) =>
-        fetchAPI(`/bookings/${id}`, {
+    update: (id: string, data: Record<string, unknown>): Promise<Booking> =>
+        fetchAPI<Booking>(`/bookings/${id}`, {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
@@ -166,20 +185,20 @@ export interface InvoiceListParams {
 }
 
 export const invoicesApi = {
-    list: (params?: InvoiceListParams) =>
-        fetchAPI("/invoices", { params }),
+    list: (params?: InvoiceListParams): Promise<PaginatedResponse<Invoice>> =>
+        fetchAPI<PaginatedResponse<Invoice>>("/invoices", { params }),
 
-    get: (id: string) =>
-        fetchAPI(`/invoices/${id}`),
+    get: (id: string): Promise<Invoice> =>
+        fetchAPI<Invoice>(`/invoices/${id}`),
 
-    create: (data: Record<string, unknown>) =>
-        fetchAPI("/invoices", {
+    create: (data: Record<string, unknown>): Promise<Invoice> =>
+        fetchAPI<Invoice>("/invoices", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
-    update: (id: string, data: Record<string, unknown>) =>
-        fetchAPI(`/invoices/${id}`, {
+    update: (id: string, data: Record<string, unknown>): Promise<Invoice> =>
+        fetchAPI<Invoice>(`/invoices/${id}`, {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
@@ -196,21 +215,26 @@ export interface JobListParams {
     customer_id?: string;
 }
 
+interface JobsResponse {
+    jobs: Job[];
+    stages: JobStage[];
+}
+
 export const jobsApi = {
-    list: (params?: JobListParams) =>
-        fetchAPI("/jobs", { params }),
+    list: (params?: JobListParams): Promise<JobsResponse> =>
+        fetchAPI<JobsResponse>("/jobs", { params }),
 
-    get: (id: string) =>
-        fetchAPI(`/jobs/${id}`),
+    get: (id: string): Promise<Job> =>
+        fetchAPI<Job>(`/jobs/${id}`),
 
-    create: (data: Record<string, unknown>) =>
-        fetchAPI("/jobs", {
+    create: (data: Record<string, unknown>): Promise<Job> =>
+        fetchAPI<Job>("/jobs", {
             method: "POST",
             body: JSON.stringify(data),
         }),
 
-    update: (id: string, data: Record<string, unknown>) =>
-        fetchAPI(`/jobs/${id}`, {
+    update: (id: string, data: Record<string, unknown>): Promise<Job> =>
+        fetchAPI<Job>(`/jobs/${id}`, {
             method: "PATCH",
             body: JSON.stringify(data),
         }),
@@ -220,12 +244,22 @@ export const jobsApi = {
 // ORGANIZATION API
 // =============================================================
 
-export const organizationApi = {
-    getCurrent: () =>
-        fetchAPI("/organization"),
+interface OrganizationResponse {
+    user: User | null;
+    organization: Organization | null;
+    membership: {
+        id: string;
+        role: string;
+        is_available: boolean;
+    } | null;
+}
 
-    create: (data: Record<string, unknown>) =>
-        fetchAPI("/organization", {
+export const organizationApi = {
+    getCurrent: (): Promise<OrganizationResponse> =>
+        fetchAPI<OrganizationResponse>("/organization"),
+
+    create: (data: Record<string, unknown>): Promise<Organization> =>
+        fetchAPI<Organization>("/organization", {
             method: "POST",
             body: JSON.stringify(data),
         }),

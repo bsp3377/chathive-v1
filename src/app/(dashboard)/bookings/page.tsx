@@ -55,13 +55,13 @@ export default function BookingsPage() {
     const startOfRange = startOfWeek(selectedDate);
     const endOfRange = endOfWeek(selectedDate);
 
-    const { data, isLoading } = useBookings({
+    const { data: response, isLoading } = useBookings({
         start_date: startOfRange.toISOString(),
         end_date: endOfRange.toISOString(),
         limit: 100,
     });
 
-    const bookings = data?.data || [];
+    const bookings = response?.data ?? [];
 
     const getInitials = (name?: string) => {
         if (!name) return "?";

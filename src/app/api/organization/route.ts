@@ -65,14 +65,16 @@ export async function POST(request: Request) {
         }
 
         // Get or create user profile
-        let userProfile = await supabase
+        const { data: existingUser } = await supabase
             .from("users")
             .select("*")
             .eq("auth_user_id", user.id)
             .single();
 
-        if (!userProfile.data) {
-            const { data: newUser } = await supabase
+        let userId = existingUser?.id;
+
+        if (!existingUser) {
+            const { data: newUser, error: createError } = await supabase
                 .from("users")
                 .insert({
                     auth_user_id: user.id,
@@ -82,7 +84,12 @@ export async function POST(request: Request) {
                 })
                 .select()
                 .single();
-            userProfile = { data: newUser, error: null };
+
+            if (createError || !newUser) {
+                console.error("Error creating user profile:", createError);
+                return NextResponse.json({ error: "Failed to create user profile" }, { status: 500 });
+            }
+            userId = newUser.id;
         }
 
         // Generate slug from name
@@ -116,7 +123,7 @@ export async function POST(request: Request) {
             .from("organization_members")
             .insert({
                 organization_id: organization.id,
-                user_id: userProfile.data!.id,
+                user_id: userId,
                 role: "owner",
                 joined_at: new Date().toISOString(),
             });
